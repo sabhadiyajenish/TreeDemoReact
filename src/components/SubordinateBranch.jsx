@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
+
 import BranchMember from "./BranchMember";
 import Modal from "./Modal.jsx";
 import { formatPosition } from "../utils/formatPosition.jsx";
 import { TreeNode } from "react-organizational-chart";
+import { Menu, Transition } from "@headlessui/react";
+import { BiDotsHorizontalRounded } from "react-icons/bi";
 
 const SubordinateBranch = ({ data, depth }) => {
   const [subordinates, setSubordinates] = useState(data.children || []);
@@ -11,20 +14,18 @@ const SubordinateBranch = ({ data, depth }) => {
 
   const addSubordinate = (type) => {
     setModalType(type);
-    setIsModalOpen(true);
-  };
-
-  const handleModalConfirm = () => {
     const newSubordinate = {
       id: Date.now(),
-      type: modalType,
+      type: type,
       position: `${data.position}/${subordinates.length + 1}`,
       children: [],
     };
     setSubordinates([...subordinates, newSubordinate]);
     setIsModalOpen(false);
   };
-
+  function classNames(...classes) {
+    return classes.filter(Boolean).join(" ");
+  }
   return (
     <div
       className={`flex flex-nowrap flex-col items-center mt-4 ${
@@ -45,13 +46,40 @@ const SubordinateBranch = ({ data, depth }) => {
           >
             +
           </button>
-          <button
-            onClick={() => addSubordinate("subordinate")}
-            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2"
-            aria-label="Add New Subordinate Branch"
-          >
-            ...
-          </button>
+          <Menu as="div" className="relative float-right w-full  ">
+            <Menu.Button>
+              <BiDotsHorizontalRounded
+                className={` text-[40px]  mr-1   cursor-pointer  `}
+              />
+            </Menu.Button>
+
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <Menu.Items className="absolute  top-[-40px] left-5 right-[-100px] z-50 mt-2 w-80 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      className={classNames(
+                        active ? "w-full bg-gray-100" : "",
+                        "w-full block md:px-4 px-2 text-center md:py-2 py-1 text-sm text-gray-700"
+                      )}
+                      onClick={() => addSubordinate("subordinate")}
+                    >
+                      Add a New Subordinate Brance
+                    </button>
+                  )}
+                </Menu.Item>
+                <hr />
+              </Menu.Items>
+            </Transition>
+          </Menu>
         </div>
       </div>
       <div className="flex flex-nowrap mt-4">
@@ -81,12 +109,6 @@ const SubordinateBranch = ({ data, depth }) => {
       </div>
 
       {/* Modal for adding new member or subordinate */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleModalConfirm}
-        type={modalType}
-      />
     </div>
   );
 };
