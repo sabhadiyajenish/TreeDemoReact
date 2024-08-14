@@ -1,16 +1,13 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useState } from "react";
 
 import SubordinateBranch from "./SubordinateBranch";
-import Modal from "./Modal";
 import { formatPosition } from "../utils/formatPosition";
 import { TreeNode } from "react-organizational-chart";
 import { Menu, Transition } from "@headlessui/react";
 import { BiDotsHorizontalRounded } from "react-icons/bi";
 
-const BranchMember = ({ data, depth }) => {
+const BranchMember = ({ groupIndex, memberIndex, data, depth }) => {
   const [subordinates, setSubordinates] = useState(data.children || []);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const addSubordinate = () => {
     const newSubordinate = {
@@ -21,25 +18,25 @@ const BranchMember = ({ data, depth }) => {
     };
     setSubordinates([...subordinates, newSubordinate]);
   };
+
   function classNames(...classes) {
     return classes.filter(Boolean).join(" ");
   }
+
   return (
     <div
-      className={`flex flex-nowrap  flex-col items-center mt-4 ${
+      className={`flex flex-nowrap flex-col items-center mt-4 ${
         depth > 1 ? "" : ""
       }`}
     >
       <div className="relative border border-gray-400 p-6 w-60 h-fit bg-white rounded-lg shadow-lg">
         <h3 className="text-lg font-semibold mb-2">
-          Branch Member {formatPosition(data.position)}
+          Branch Member {groupIndex + 1}/{memberIndex + 1}
         </h3>
 
-        <Menu as="div" className="relative  float-right ">
+        <Menu as="div" className="relative float-right">
           <Menu.Button>
-            <BiDotsHorizontalRounded
-              className={` text-[40px]  mr-1   cursor-pointer  `}
-            />
+            <BiDotsHorizontalRounded className="text-[40px] mr-1 cursor-pointer" />
           </Menu.Button>
 
           <Transition
@@ -51,7 +48,7 @@ const BranchMember = ({ data, depth }) => {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute  top-[-40px] left-5 right-[-100px] z-50 mt-2 w-80 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <Menu.Items className="absolute top-[-40px] left-5 right-[-100px] z-50 mt-2 w-80 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <Menu.Item>
                 {({ active }) => (
                   <button
@@ -61,7 +58,7 @@ const BranchMember = ({ data, depth }) => {
                     )}
                     onClick={addSubordinate}
                   >
-                    Add a New Subordinate Brance
+                    Add a New Subordinate Branch
                   </button>
                 )}
               </Menu.Item>
@@ -74,14 +71,9 @@ const BranchMember = ({ data, depth }) => {
       <div className="flex flex-nowrap mt-4">
         {subordinates.map((subordinate) => (
           <TreeNode
-            label={
-              <SubordinateBranch
-                key={subordinate.id}
-                data={subordinate}
-                depth={depth + 1}
-              />
-            }
-          ></TreeNode>
+            key={subordinate.id}
+            label={<SubordinateBranch data={subordinate} depth={depth + 1} />}
+          />
         ))}
       </div>
     </div>

@@ -20,3 +20,30 @@
   height: 2px;
   width: 100%; /* Adjust this based on your layout */
 }
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(200px, 1fr)
+  ); /* Adjust minmax value to control column width */
+  gap: 10px; /* Space between items */
+}
+
+.sub-main {
+  display: flex;
+  flex-direction: column;
+  flex-direction: column-reverse;
+  justify-content: start;
+  background-color: #f5f5f5;
+}
+
+.col-one {
+  width: 100px;
+  height: 100px;
+  background-color: #000;
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
