@@ -90,16 +90,36 @@ const authSlice = createSlice({
 
       // Recursive function to fix position formatting
       const fixPositions = (nodes, parentPosition = "") => {
-        return nodes.map((node, index) => {
+        console.log("Processing nodes:", nodes);
+
+        let memberIndex = 1; // To track positions for "member" type nodes
+        let subordinateIndex = 1; // To track positions for "subordinate" type nodes
+
+        return nodes.reduce((acc, node) => {
+          // Determine the position index based on node type
+          let newIndex;
+          if (node.type === "member") {
+            newIndex = memberIndex++;
+          } else if (node.type === "subordinate") {
+            newIndex = subordinateIndex++;
+          } else {
+            newIndex = 1; // Default index if type is unknown
+          }
+
+          // Create the new position based on parent position and type-specific index
           const newPosition = parentPosition
-            ? `${parentPosition}/${index + 1}`
-            : `${index + 1}`;
-          return {
+            ? `${parentPosition}/${newIndex}`
+            : `${newIndex}`;
+
+          // Add the node with updated position
+          const updatedNode = {
             ...node,
             position: newPosition,
             children: fixPositions(node.children, newPosition),
           };
-        });
+
+          return [...acc, updatedNode];
+        }, []);
       };
 
       // Remove the branch and adjust positions
@@ -111,13 +131,13 @@ const authSlice = createSlice({
     deleteThisBranch: (state, action) => {
       const { idToRemove } = action.payload;
 
-      // Recursive function to update positions of nodes
-      const updatePositions = (nodes, parentPosition) => {
+      // Recursive function to remove a node and promote its children
+      const removeAndPromote = (nodes, parentPosition = "") => {
         let index = 1;
         return nodes.reduce((acc, node) => {
           if (node.id === idToRemove) {
             if (node.children && node.children.length > 0) {
-              // If the node to delete has children, move them up to the parent's level
+              // Promote children of the node to delete
               return [
                 ...acc,
                 ...node.children.map((child) => ({
@@ -133,7 +153,7 @@ const authSlice = createSlice({
           // Recursively handle the children
           const updatedNode = {
             ...node,
-            children: updatePositions(
+            children: removeAndPromote(
               node.children,
               `${parentPosition}/${index++}`
             ),
@@ -145,20 +165,40 @@ const authSlice = createSlice({
 
       // Function to fix position formatting after deletion
       const fixPositions = (nodes, parentPosition = "") => {
-        return nodes.map((node, index) => {
+        console.log("Processing nodes:", nodes);
+
+        let memberIndex = 1; // To track positions for "member" type nodes
+        let subordinateIndex = 1; // To track positions for "subordinate" type nodes
+
+        return nodes.reduce((acc, node) => {
+          // Determine the position index based on node type
+          let newIndex;
+          if (node.type === "member") {
+            newIndex = memberIndex++;
+          } else if (node.type === "subordinate") {
+            newIndex = subordinateIndex++;
+          } else {
+            newIndex = 1; // Default index if type is unknown
+          }
+
+          // Create the new position based on parent position and type-specific index
           const newPosition = parentPosition
-            ? `${parentPosition}/${index + 1}`
-            : `${index + 1}`;
-          return {
+            ? `${parentPosition}/${newIndex}`
+            : `${newIndex}`;
+
+          // Add the node with updated position
+          const updatedNode = {
             ...node,
             position: newPosition,
             children: fixPositions(node.children, newPosition),
           };
-        });
+
+          return [...acc, updatedNode];
+        }, []);
       };
 
-      // Apply the recursive update logic and fix positions
-      state.UserList = fixPositions(updatePositions(state.UserList, ""));
+      // Apply the recursive removal and position fixing
+      state.UserList = fixPositions(removeAndPromote(state.UserList, ""));
       console.log("Updated state:", state.UserList);
     },
   },
