@@ -1,38 +1,18 @@
 import React, { Fragment, useState } from "react";
+
+import { useSelector, useDispatch } from "react-redux";
 import SubordinateBranch from "./SubordinateBranch";
 import { Tree, TreeNode } from "react-organizational-chart";
 import { BiDotsHorizontalRounded } from "react-icons/bi";
 import { Menu, Transition } from "@headlessui/react";
+import { addSubordinate } from "../store/Auth/auth.slice.js";
 
 const Director = () => {
-  const [subordinates, setSubordinates] = useState([]);
-  console.log("this is director", subordinates);
+  const dispatch = useDispatch();
+  const subordinates = useSelector((state) => state.auth.UserList);
 
-  // Add a new subordinate branch
-  const addSubordinate = () => {
-    const newSubordinate = {
-      id: Date.now(),
-      type: "subordinate",
-      position: `${subordinates.length + 1}`,
-      children: [],
-    };
-    setSubordinates([...subordinates, newSubordinate]);
-  };
-
-  // Recursive function to remove a branch by ID
-  const removeBranchRecursively = (nodes, idToRemove) => {
-    return nodes
-      .filter((node) => node.id !== idToRemove)
-      .map((node) => ({
-        ...node,
-        children: removeBranchRecursively(node.children, idToRemove),
-      }));
-  };
-
-  // Function to delete a branch
-  const deleteBranch = (branchId) => {
-    const updatedSubordinates = removeBranchRecursively(subordinates, branchId);
-    setSubordinates(updatedSubordinates);
+  const handleAddSubordinate = () => {
+    dispatch(addSubordinate({ parentId: null, type: "subordinate" }));
   };
 
   return (
@@ -61,13 +41,12 @@ const Director = () => {
                         className={`w-full ${
                           active ? "bg-gray-100" : ""
                         } block md:px-4 px-2 text-center md:py-2 py-1 text-sm text-gray-700`}
-                        onClick={addSubordinate}
+                        onClick={handleAddSubordinate}
                       >
                         Add a New Subordinate Branch
                       </button>
                     )}
                   </Menu.Item>
-                  <hr />
                 </Menu.Items>
               </Transition>
             </Menu>
@@ -79,15 +58,11 @@ const Director = () => {
             <TreeNode
               key={subordinate.id}
               label={
-                <TreeNode
-                  label={
-                    <SubordinateBranch
-                      data={subordinate}
-                      depth={1}
-                      onDeleteBranch={deleteBranch} // Pass delete function as prop
-                      tree={subordinates}
-                    />
-                  }
+                <SubordinateBranch
+                  data={subordinate}
+                  allData={subordinates}
+                  depth={1}
+                  onDeleteBranch={(id) => dispatch(deleteBranch(id))}
                 />
               }
             />

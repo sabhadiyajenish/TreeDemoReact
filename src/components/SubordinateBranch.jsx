@@ -1,10 +1,16 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useState } from "react";
+import { useDispatch } from "react-redux";
 import BranchMember from "./BranchMember";
-import Modal from "./Modal.jsx";
-import { formatPosition } from "../utils/formatPosition.jsx";
+import Modal from "./Modal";
+import { formatPosition } from "../utils/formatPosition";
 import { TreeNode } from "react-organizational-chart";
 import { Menu, Transition } from "@headlessui/react";
 import { BiDotsHorizontalRounded } from "react-icons/bi";
+import {
+  addSubSubordinate,
+  deleteBranch,
+  deleteThisBranch,
+} from "../store/Auth/auth.slice";
 
 // Utility function to group items into columns
 const groupItemsIntoColumns = (items, groupSize) => {
@@ -15,60 +21,67 @@ const groupItemsIntoColumns = (items, groupSize) => {
   return result;
 };
 
-const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
-  const [subordinates, setSubordinates] = useState([]);
+const SubordinateBranch = ({ data, depth, allData }) => {
+  const dispatch = useDispatch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
-  useEffect(() => {
-    if (data.children) {
-      setSubordinates(data.children);
-    }
-  }, [data.children]);
-  console.log("this is sub-ordinate", subordinates);
 
-  const addSubordinate = (type) => {
+  // Function to find children nodes recursively
+  const findSubordinates = (id) => {
+    const findNode = (nodes) => {
+      if (!Array.isArray(nodes)) {
+        console.error("Expected an array of nodes but got:", nodes);
+        return [];
+      }
+
+      for (const node of nodes) {
+        if (node.id === id) {
+          return Array.isArray(node.children) ? node.children : [];
+        }
+        const childResult = findNode(node.children || []);
+        if (childResult.length > 0) return childResult;
+      }
+      return [];
+    };
+
+    return findNode(allData); // Ensure allData is defined and valid
+  };
+
+  const subordinates = findSubordinates(data.id);
+
+  const addSubordinateHandler = (type) => {
+    setModalType(type);
+    setIsModalOpen(true);
+  };
+
+  const handleAddSubordinate = (type) => {
     console.log(">>>>subordinate", subordinates, data.position);
     const abc = subordinates?.filter((dt) => dt.type === type);
-    setModalType(type);
     const newSubordinate = {
       id: Date.now(),
       type: type,
       position: `${data.position}/${abc.length + 1}`,
       children: [],
     };
-    setSubordinates([...subordinates, newSubordinate]);
+
+    const payload = { parentId: data.id, newSubordinate };
+
+    console.log("Dispatching payload:", payload);
+
+    dispatch(addSubSubordinate(payload));
     setIsModalOpen(false);
   };
-  const removeBranchRecursively = (nodes, idToRemove) => {
-    console.log("Starting nodes:", nodes);
-    console.log("ID to remove:", idToRemove);
 
-    const filteredNodes = nodes
-      .filter((node) => node.id !== idToRemove)
-      .map((node) => ({
-        ...node,
-        children: removeBranchRecursively(node.children, idToRemove),
-      }));
-
-    console.log("Filtered nodes:", filteredNodes);
-    return filteredNodes;
-  };
   const handleDeleteBranch = () => {
-    onDeleteBranch(data.id);
+    dispatch(deleteBranch(data.id));
   };
 
   function classNames(...classes) {
     return classes.filter(Boolean).join(" ");
   }
-
-  // Calculate the position based on column grouping
-  const memberGroups = groupItemsIntoColumns(
-    subordinates.filter((subordinate) => subordinate.type === "member"),
-    3
-  );
-  const handleDeleteSubBranchesAndMembers = () => {
-    // Remove all subordinates and members but keep the current branch intact
-    setSubordinates([]);
+  const handleDeleteSubordinate = () => {
+    const payload = { idToRemove: data.id, parentId: null };
+    dispatch(deleteThisBranch(payload));
   };
   return (
     <div className={`flex flex-col items-center mt-4 ${depth > 1 ? "" : ""}`}>
@@ -80,7 +93,7 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
         </h2>
         <div className="flex justify-center items-center mt-2">
           <button
-            onClick={() => addSubordinate("member")}
+            onClick={() => handleAddSubordinate("member")}
             className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 mr-2"
             aria-label="Add New Member"
           >
@@ -108,7 +121,7 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
                         active ? "w-full bg-gray-100" : "",
                         "w-full block md:px-4 px-2 text-center md:py-2 py-1 text-sm text-gray-700"
                       )}
-                      onClick={() => addSubordinate("subordinate")}
+                      onClick={() => handleAddSubordinate("subordinate")}
                     >
                       Add a New Subordinate Branch
                     </button>
@@ -136,9 +149,9 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
                         active ? "w-full bg-gray-100" : "",
                         "w-full block md:px-4 px-2 text-center md:py-2 py-1 text-sm text-gray-700"
                       )}
-                      onClick={handleDeleteSubBranchesAndMembers}
+                      onClick={handleDeleteSubordinate}
                     >
-                      Delete Sub Branches and member
+                      Delete This only
                     </button>
                   )}
                 </Menu.Item>
@@ -147,12 +160,35 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
           </Menu>
         </div>
       </div>
-
-      <div className="flex gap-10 ">
+      {/* <TreeNode
+        className=" flex"
+        label={memberGroups.map((group, groupIndex) => (
+          <TreeNode
+            className="mt-4"
+            label={
+              <div key={groupIndex} className="sub-main">
+                {group.map((subordinate, memberIndex) => (
+                  <BranchMember
+                    key={subordinate.id}
+                    groupIndex={groupIndex}
+                    memberIndex={memberIndex}
+                    data={subordinate}
+                    depth={depth + 1}
+                  />
+                ))}
+              </div>
+            }
+          />
+        ))}
+      /> */}
+      <div className="flex gap-10">
         {/* Render member groups */}
         <TreeNode
           className=" flex"
-          label={memberGroups.map((group, groupIndex) => (
+          label={groupItemsIntoColumns(
+            subordinates.filter((subordinate) => subordinate.type === "member"),
+            3
+          ).map((group, groupIndex) => (
             <TreeNode
               className="mt-4"
               label={
@@ -164,6 +200,7 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
                       memberIndex={memberIndex}
                       data={subordinate}
                       depth={depth + 1}
+                      allData={allData}
                     />
                   ))}
                 </div>
@@ -172,7 +209,7 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
           ))}
         />
 
-        {/* Wrapper for non-'member' type subordinates */}
+        {/* Render subordinate branches */}
         <div className="flex mt-4 flex-nowrap">
           {subordinates
             .filter((subordinate) => subordinate.type !== "member")
@@ -183,18 +220,13 @@ const SubordinateBranch = ({ data, depth, onDeleteBranch }) => {
                   <SubordinateBranch
                     data={subordinate}
                     depth={depth + 1}
-                    onDeleteBranch={onDeleteBranch} // Pass down delete function
+                    allData={allData}
                   />
                 }
               />
             ))}
         </div>
       </div>
-
-      {/* Modal for adding new member or subordinate */}
-      {isModalOpen && (
-        <Modal type={modalType} onClose={() => setIsModalOpen(false)} />
-      )}
     </div>
   );
 };
