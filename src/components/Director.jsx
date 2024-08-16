@@ -5,14 +5,22 @@ import SubordinateBranch from "./SubordinateBranch";
 import { Tree, TreeNode } from "react-organizational-chart";
 import { BiDotsHorizontalRounded } from "react-icons/bi";
 import { Menu, Transition } from "@headlessui/react";
-import { addSubordinate } from "../store/Auth/auth.slice.js";
+import { addSubordinate, addSubSubordinate } from "../store/Auth/auth.slice.js";
 
 const Director = () => {
   const dispatch = useDispatch();
   const subordinates = useSelector((state) => state.auth.UserList);
 
   const handleAddSubordinate = () => {
-    dispatch(addSubordinate({ parentId: null, type: "subordinate" }));
+    const newSubordinate = {
+      id: Date.now(),
+      type: "subordinate",
+      position: `${subordinates?.length + 1}`,
+      children: [],
+    };
+
+    const payload = { parentId: null, newSubordinate };
+    dispatch(addSubSubordinate(payload));
   };
 
   return (

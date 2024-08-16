@@ -131,74 +131,104 @@ const authSlice = createSlice({
     deleteThisBranch: (state, action) => {
       const { idToRemove } = action.payload;
 
-      // Recursive function to remove a node and promote its children
-      const removeAndPromote = (nodes, parentPosition = "") => {
-        let index = 1;
-        return nodes.reduce((acc, node) => {
+      // Helper function to process nodes and remove the target node
+      const processNodes = (nodes, idToRemove, parentPosition = "") => {
+        const result = [];
+        let childrenToMove = [];
+
+        nodes.forEach((node, idx) => {
           if (node.id === idToRemove) {
-            if (node.children && node.children.length > 0) {
-              // Promote children of the node to delete
-              return [
-                ...acc,
-                ...node.children.map((child) => ({
-                  ...child,
-                  position: `${parentPosition}/${index++}`, // Update the position of the child
-                })),
-              ];
-            }
-            // If no children, skip this node (effectively deleting it)
-            return acc;
+            // Collect children to move
+            childrenToMove = node.children.map((child, childIdx) => ({
+              ...child,
+              position: `${parentPosition}/${childIdx + 1}`,
+            }));
+            console.log("childrensame level is <<", childrenToMove);
+
+            // Skip adding the removed node
+            return;
           }
 
-          // Recursively handle the children
+          // Recursively process child nodes
           const updatedNode = {
             ...node,
-            children: removeAndPromote(
+            children: processNodes(
               node.children,
-              `${parentPosition}/${index++}`
+              idToRemove,
+              `${parentPosition}/${idx + 1}`
             ),
           };
 
-          return [...acc, updatedNode];
-        }, []);
+          result.push(updatedNode);
+        });
+
+        // Relocate children
+        if (childrenToMove.length > 0) {
+          const sameLevelSiblings = result.filter(
+            (node) => node.type === "subordinate"
+          );
+
+          if (sameLevelSiblings.length > 0) {
+            // Move children to the next same-level sibling
+            console.log("come here if have same levelsibling level is <<");
+
+            const nextSibling = sameLevelSiblings.find(
+              (sibling, siblingIdx) => siblingIdx >= 0
+            );
+
+            if (nextSibling) {
+              nextSibling.children = [
+                ...nextSibling.children,
+                ...childrenToMove,
+              ];
+            } else {
+              // If no next sibling, move children to the previous sibling
+              const prevSibling = sameLevelSiblings.find(
+                (sibling, siblingIdx) => siblingIdx <= 0
+              );
+
+              if (prevSibling) {
+                prevSibling.children = [
+                  ...prevSibling.children,
+                  ...childrenToMove,
+                ];
+              } else {
+                // If no siblings, move children to the parent
+                result.push(...childrenToMove);
+              }
+            }
+          } else {
+            // If no same-level siblings, move children to the parent
+            console.log("come here if dont same levelsibling level is <<");
+
+            result.push(...childrenToMove);
+          }
+        }
+
+        return result;
       };
 
-      // Function to fix position formatting after deletion
+      // Function to fix positions after deletion and promotion
       const fixPositions = (nodes, parentPosition = "") => {
-        console.log("Processing nodes:", nodes);
+        let index = 1;
 
-        let memberIndex = 1; // To track positions for "member" type nodes
-        let subordinateIndex = 1; // To track positions for "subordinate" type nodes
-
-        return nodes.reduce((acc, node) => {
-          // Determine the position index based on node type
-          let newIndex;
-          if (node.type === "member") {
-            newIndex = memberIndex++;
-          } else if (node.type === "subordinate") {
-            newIndex = subordinateIndex++;
-          } else {
-            newIndex = 1; // Default index if type is unknown
-          }
-
-          // Create the new position based on parent position and type-specific index
+        return nodes.map((node) => {
           const newPosition = parentPosition
-            ? `${parentPosition}/${newIndex}`
-            : `${newIndex}`;
+            ? `${parentPosition}/${index++}`
+            : `${index++}`;
 
-          // Add the node with updated position
-          const updatedNode = {
+          return {
             ...node,
             position: newPosition,
             children: fixPositions(node.children, newPosition),
           };
-
-          return [...acc, updatedNode];
-        }, []);
+        });
       };
 
-      // Apply the recursive removal and position fixing
-      state.UserList = fixPositions(removeAndPromote(state.UserList, ""));
+      // Process the nodes to remove the target and promote children
+      const processedNodes = processNodes(state.UserList, idToRemove);
+      state.UserList = fixPositions(processedNodes);
+
       console.log("Updated state:", state.UserList);
     },
   },
